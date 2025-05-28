@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>micro-prolog</title>
+
+    <style>
+        html, body {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            padding: 5px;
+            align-items: stretch;
+            justify-content: space-between;
+            flex-direction: row;
+        }
+
+        textarea {
+            display: block;
+            padding: 5px;
+
+            font: 14pt monospace;
+
+            box-sizing: border-box;
+            flex-grow: 1;
+        }
+
+        #code {
+            max-width: 50%;
+            margin-right: 5px;
+        }
+
+        .control-panel {
+            display: flex;
+            max-width: 50%;
+            align-items: stretch;
+            justify-content: space-between;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .answers {
+            max-height: 47%;
+            overflow-y: auto;
+            margin-top: 5px;
+
+            font: 14pt monospace;
+            line-break: anywhere;
+
+            flex-grow: 1;
+        }
+
+        .false {
+            color: red;
+            font-weight: bold;
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            min-height: 30px;
+            max-height: 30px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+<textarea id="code"></textarea>
+
+<div class="control-panel">
+    <textarea id="print" disabled></textarea>
+
+    <div class="answers">
+        Answers:
+
+        <ul id="answers"></ul>
+    </div>
+
+    <button id="run">Run</button>
+</div>
+
+<script type="text/javascript" src="./script.js"></script>
+
+</body>
+</html>
