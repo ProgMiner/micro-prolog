@@ -4,6 +4,7 @@ import { Substitution } from './Substitution';
 import { Horn } from '../syntax/Horn';
 import { unifyLiterals } from './unify';
 import { Term, VarTerm } from '../syntax/Term';
+import { Literal } from '../syntax/Literal';
 
 
 export const FalseEvaluation = Symbol('FalseEvaluation');
@@ -27,19 +28,30 @@ const falseEvaluator: Evaluator = {
     },
 };
 
+interface CurrentQuery {
+    readonly parent?: CurrentQuery;
+    readonly head: Literal;
+}
+
+const hornTailToCurrentQuery = (t: HornTail, parent?: CurrentQuery): CurrentQuery | undefined => {
+    for (let i = t.length - 1; i >= 0; --i) {
+        parent = { parent, head: t[i]! };
+    }
+
+    return parent;
+}
+
 interface EvaluatorFrame {
     readonly parent?: EvaluatorFrame;
     readonly subst: Substitution;
-    readonly query: HornTail;
+    readonly query?: CurrentQuery;
     readonly vars: number;
     position: number;
 }
 
 export const evaluate = (program: Program): Evaluator => {
     const step = async (frame: EvaluatorFrame): Promise<[Evaluation, EvaluatorFrame | undefined]> => {
-        const head = frame.query[0];
-
-        if (!head) {
+        if (!frame.query) {
             const path = [];
             for (let fr: EvaluatorFrame | undefined = frame; fr; fr = fr.parent) {
                 path.push(fr.position);
@@ -71,8 +83,8 @@ export const evaluate = (program: Program): Evaluator => {
 
         const horn = Horn.refresh(frame.vars, origHorn);
         try {
-            const subst = await unifyLiterals(frame.subst, head, horn.h);
-            const query = [...horn.t, ...frame.query.slice(1)];
+            const subst = await unifyLiterals(frame.subst, frame.query.head, horn.h);
+            const query = hornTailToCurrentQuery(horn.t, frame.query.parent);
             const vars = frame.vars + horn.vn;
 
             return [StepEvaluation, { parent: frame, subst, query, vars, position: 0 }];
@@ -90,7 +102,7 @@ export const evaluate = (program: Program): Evaluator => {
 
     return makeEvaluator({
         subst: Substitution.empty,
-        query: program.query,
+        query: hornTailToCurrentQuery(program.query),
         vars: program.queryVars.length,
         position: 0,
     });
