@@ -17,9 +17,7 @@
     "immutable": "^5.1.2"
   },
   "devDependencies": {
-    "css-loader": "^6.8.1",
     "gh-pages": "^5.0.0",
-    "purs-loader": "^4.0.0",
     "shx": "^0.3.4",
     "ts-loader": "^9.4.3",
     "typescript": "^5.0.4",
