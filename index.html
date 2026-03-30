@@ -24,19 +24,22 @@
             flex-direction: row;
         }
 
+        textarea, #code {
+            font: 14pt monospace;
+            box-sizing: border-box;
+            flex-grow: 1;
+        }
+
         textarea {
             display: block;
             padding: 5px;
-
-            font: 14pt monospace;
-
-            box-sizing: border-box;
-            flex-grow: 1;
         }
 
         #code {
             max-width: 50%;
             margin-right: 5px;
+            border: 1px solid #767676;
+            border-radius: 2px;
         }
 
         .control-panel {
