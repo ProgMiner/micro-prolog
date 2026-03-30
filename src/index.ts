@@ -1,22 +1,19 @@
+import { basicSetup, EditorView } from 'codemirror';
+import { indentWithTab } from '@codemirror/commands';
+import { keymap } from '@codemirror/view';
+
 import { Parser } from './util/parser/Parser';
 import { Parsers } from './util/parser/Parsers';
-import { Program } from './syntax/Program';
 import { ParseState } from './util/parser/ParseState';
 import { evaluate, Evaluator, FalseEvaluation, StepEvaluation } from './evaluator/Evaluator';
+import { microProlog } from './editor/language';
+import { Program } from './syntax/Program';
 import { Term } from './syntax/Term';
 
 
-const codeElement = document.getElementById('code') as HTMLTextAreaElement;
 const printElement = document.getElementById('print') as HTMLTextAreaElement;
 const answersElement = document.getElementById('answers') as HTMLUListElement;
 const runButton = document.getElementById('run')! as HTMLButtonElement;
-
-{
-    const buffer = localStorage.getItem('buffer');
-    if (buffer) {
-        codeElement.value = buffer;
-    }
-}
 
 let currentEvaluator: Evaluator | undefined = undefined;
 
@@ -29,12 +26,12 @@ const setCurrentEvaluator = (evaluator?: Evaluator) => {
     runButton.innerText = evaluator ? 'Next answer' : 'Run';
 }
 
-const onCodeChange = () => {
+const onCodeChange = (code: string) => {
     setTimeout(async () => {
-        localStorage.setItem('buffer', codeElement.value);
+        localStorage.setItem('buffer', code);
 
         try {
-            const [prg, rest] = await Program.parse(ParseState.initial(codeElement.value));
+            const [prg, rest] = await Program.parse(ParseState.initial(code));
 
             let res = Program.show(Program.prepare(prg));
             if (rest.input.trim().length > 0) {
@@ -50,8 +47,31 @@ const onCodeChange = () => {
     setCurrentEvaluator(undefined);
 };
 
-codeElement.addEventListener('keyup', onCodeChange);
-onCodeChange();
+const editorView = new EditorView({
+    doc: localStorage.getItem('buffer') || undefined,
+    extensions: [
+        keymap.of([indentWithTab]),
+        EditorView.updateListener.of(update => {
+            if (!update.docChanged) {
+                return;
+            }
+
+            onCodeChange(update.state.doc.toString());
+        }),
+        basicSetup,
+        microProlog,
+        EditorView.theme({
+            '&.cm-focused': {
+                outline: 'none',
+            },
+        }),
+    ],
+});
+
+document.getElementById('code')!.replaceWith(editorView.dom)
+editorView.dom.id = 'code';
+
+onCodeChange(editorView.state.doc.toString());
 
 let running = false;
 
@@ -126,7 +146,7 @@ runButton.addEventListener('click', async () => {
     }
 
     try {
-        const program = Program.prepare(await Parser.eval0(codeElement.value, Parsers.full(Program.parse)));
+        const program = Program.prepare(await Parser.eval0(editorView.state.doc.toString(), Parsers.full(Program.parse)));
         setCurrentEvaluator(evaluate(program));
     } catch (e) {
         console.error(e);

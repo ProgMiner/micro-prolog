@@ -1,0 +1,28 @@
+
+@top Program { Horn* Query }
+
+@skip { space | Comment }
+
+Query { list0<Literal> }
+
+Horn { Literal (":-" list1<Literal>)? "." }
+
+Literal { ConsName bracedList<Term> }
+
+Term
+    { VarName
+    | ConsName bracedList<Term>
+    }
+
+list1<elem> { elem ("," elem)* }
+list0<elem> { list1<elem>? }
+
+braced<value> { "(" value ")" }
+bracedList<value> { (braced<list1<value>>)? }
+
+@tokens {
+    VarName { @asciiUppercase (@asciiLetter | @digit | "_")* }
+    ConsName { @asciiLowercase (@asciiLetter | @digit | "_")* }
+    space { @whitespace+ }
+    Comment { "%" ![\n]* }
+}

@@ -13,7 +13,7 @@ export interface Literal {
 }
 
 const parseLiteral: Parser<Literal> = Parser.bind(Term.parseConsName, p =>
-    Parser.map(Parsers.braced(Parsers.list(Term.parse)), a => ({ p, a })));
+    Parser.map(Parsers.bracedList(Term.parse), a => ({ p, a })));
 
 export const Literal = {
 

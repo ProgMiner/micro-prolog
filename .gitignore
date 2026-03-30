@@ -113,3 +113,5 @@ fabric.properties
 /node_modules
 /build
 
+/src/__generated__
+
