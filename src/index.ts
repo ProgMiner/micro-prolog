@@ -7,28 +7,54 @@ import { Parsers } from './util/parser/Parsers';
 import { ParseState } from './util/parser/ParseState';
 import { evaluate as dfsEvaluate } from './evaluator/DFSEvaluator';
 import { evaluate as interleavingEvaluate } from './evaluator/InterleavingEvaluator';
-import { FalseEvaluation, StepEvaluation, Evaluator, CurrentQuery, hornTailToCurrentQuery, EvaluatorFrame, falseEvaluator } from './evaluator/Evaluator';
+import { FalseEvaluation, StepEvaluation, Evaluator, CurrentQuery, hornTailToCurrentQuery, EvaluatorFrame, falseEvaluator, buildAnswer } from './evaluator/Evaluator';
 import { microProlog } from './editor/language';
 import { Program } from './syntax/Program';
 import { Term } from './syntax/Term';
 
 
+const answersDfsElement = document.getElementById('answers-dfs') as HTMLUListElement;
+const answersInterleavingElement = document.getElementById('answers-interleaving') as HTMLUListElement;
 const printElement = document.getElementById('print') as HTMLTextAreaElement;
-const answersElement = document.getElementById('answers') as HTMLUListElement;
 const runButton = document.getElementById('run')! as HTMLButtonElement;
 const strategySelect = document.getElementById('strategy') as HTMLSelectElement;
 
-let currentEvaluator: Evaluator | undefined = undefined;
+const getCurrentStrategy = () => strategySelect.value as 'dfs' | 'interleaving';
 
-const setCurrentEvaluator = (evaluator?: Evaluator) => {
-    if (!currentEvaluator && evaluator) {
-        answersElement.replaceChildren();
-    }
-
-    currentEvaluator = evaluator;
-    runButton.innerText = evaluator ? 'Next answer' : 'Run';
-    strategySelect.disabled = !!evaluator;
+interface EvaluatorTab {
+    evaluator?: Evaluator;
+    running: boolean;
+    answersList: HTMLUListElement;
 }
+
+const evaluatorTabs: { readonly [K in 'dfs' | 'interleaving']: EvaluatorTab } = {
+    dfs: { evaluator: undefined, running: false, answersList: answersDfsElement },
+    interleaving: { evaluator: undefined, running: false, answersList: answersInterleavingElement },
+};
+
+const switchStrategy = () => {
+    const strategy = getCurrentStrategy();
+    localStorage.setItem('strategy', strategy);
+
+    answersDfsElement.classList.toggle('hidden', strategy !== 'dfs');
+    answersInterleavingElement.classList.toggle('hidden', strategy !== 'interleaving');
+
+    const tab = evaluatorTabs[strategy];
+    runButton.innerText = tab.evaluator
+        ? (tab.running ? 'Interrupt' : 'Next answer')
+        : 'Run';
+
+    tab.answersList.parentElement?.scrollTo(0, tab.answersList.parentElement.scrollHeight);
+};
+
+const savedStrategy = localStorage.getItem('strategy');
+if (savedStrategy === 'dom' || savedStrategy === 'interleaving') {
+    strategySelect.value = savedStrategy;
+}
+
+switchStrategy();
+
+strategySelect.addEventListener('change', switchStrategy);
 
 const onCodeChange = (code: string) => {
     setTimeout(async () => {
@@ -48,8 +74,14 @@ const onCodeChange = (code: string) => {
         }
     }, 1);
 
-    setCurrentEvaluator(undefined);
-    strategySelect.disabled = false;
+    for (const strategy of ['dfs', 'interleaving'] as const) {
+        const tab = evaluatorTabs[strategy];
+        tab.answersList.replaceChildren();
+        tab.evaluator = undefined;
+        tab.running = false;
+    }
+
+    runButton.innerText = 'Run';
 };
 
 const editorView = new EditorView({
@@ -78,11 +110,9 @@ editorView.dom.id = 'code';
 
 onCodeChange(editorView.state.doc.toString());
 
-let running = false;
-
-const continueProgram = async (evaluator: Evaluator): Promise<Evaluator | undefined> => {
+const continueProgram = async (evaluator: Evaluator, tab: EvaluatorTab): Promise<Evaluator | undefined> => {
     const elem = document.createElement('li');
-    answersElement.appendChild(elem);
+    tab.answersList.appendChild(elem);
     elem.innerText = '...';
 
     let steps = 0;
@@ -95,7 +125,7 @@ const continueProgram = async (evaluator: Evaluator): Promise<Evaluator | undefi
             if (res === StepEvaluation) {
                 ++steps;
 
-                if (!running) {
+                if (!tab.running) {
                     elem.innerText = `INTERRUPTED after ${steps} steps (${elapsedTime()} sec)`;
                     elem.classList.add('false');
                     return newEvaluator;
@@ -135,33 +165,39 @@ const continueProgram = async (evaluator: Evaluator): Promise<Evaluator | undefi
 };
 
 runButton.addEventListener('click', async () => {
-    if (running) {
-        running = false;
-        runButton.disabled = true;
+    const currentStrategy = getCurrentStrategy();
+    const tab = evaluatorTabs[currentStrategy];
+
+    if (tab.running) {
+        tab.running = false;
         return;
     }
 
-    if (currentEvaluator) {
-        running = true;
+    if (tab.evaluator) {
+        tab.running = true;
         runButton.innerText = 'Interrupt';
-        setCurrentEvaluator(await continueProgram(currentEvaluator));
-        runButton.disabled = false;
-        running = false;
+        const evaluator = await continueProgram(tab.evaluator, tab);
+        tab.running = false;
+
+        if (!tab.evaluator) {
+            return;
+        }
+
+        tab.evaluator = evaluator;
+        if (currentStrategy === getCurrentStrategy()) {
+            runButton.innerText = 'Next answer';
+        }
+
         return;
     }
 
     try {
         const program = Program.prepare(await Parser.eval0(editorView.state.doc.toString(), Parsers.full(Program.parse)));
 
-        const strategy = strategySelect.value as 'dfs' | 'interleaving';
-        let evaluator: Evaluator;
-        if (strategy === 'interleaving') {
-            evaluator = interleavingEvaluate(program);
-        } else {
-            evaluator = dfsEvaluate(program);
-        }
-
-        setCurrentEvaluator(evaluator);
+        const evaluator = currentStrategy === 'dfs' ? dfsEvaluate(program) : interleavingEvaluate(program);
+        tab.evaluator = evaluator;
+        tab.running = false;
+        runButton.innerText = 'Next answer';
     } catch (e) {
         console.error(e);
         alert(e);
