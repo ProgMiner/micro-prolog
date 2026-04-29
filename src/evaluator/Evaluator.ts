@@ -40,6 +40,29 @@ export const hornTailToCurrentQuery = (t: HornTail, parent?: CurrentQuery): Curr
     return parent;
 }
 
+export const buildAnswer = (frame: EvaluatorFrame, program: Program): ResultEvaluation => {
+    const path = [];
+    for (let fr: EvaluatorFrame | undefined = frame; fr; fr = fr.parent) {
+        path.push(fr.position);
+    }
+
+    path.reverse().pop();
+
+    const answer: [VarTerm, Term][] = [];
+    for (let i = 0; i < program.queryVars.length; ++i) {
+        const v: VarTerm = { v: program.queryVars[i]!, n: i };
+        const t = Substitution.apply(frame.subst)(v);
+
+        if (Term.isVar(t) && t.n === v.n) {
+            continue;
+        }
+
+        answer.push([v, t]);
+    }
+
+    return { path, answer };
+}
+
 export interface EvaluatorFrame {
     readonly parent?: EvaluatorFrame;
     readonly subst: Substitution;

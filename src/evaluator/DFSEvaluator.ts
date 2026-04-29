@@ -7,33 +7,14 @@ import { Term, VarTerm } from '../syntax/Term';
 import { Literal } from '../syntax/Literal';
 import {
     ResultEvaluation, StepEvaluation, Evaluation, Evaluator, FalseEvaluation, CurrentQuery,
-    hornTailToCurrentQuery, EvaluatorFrame, falseEvaluator,
+    hornTailToCurrentQuery, EvaluatorFrame, falseEvaluator, buildAnswer,
 } from './Evaluator';
 
 
 export const evaluate = (program: Program): Evaluator => {
     const step = async (frame: EvaluatorFrame): Promise<[Evaluation, EvaluatorFrame | undefined]> => {
         if (!frame.query) {
-            const path = [];
-            for (let fr: EvaluatorFrame | undefined = frame; fr; fr = fr.parent) {
-                path.push(fr.position);
-            }
-
-            path.reverse().pop();
-
-            const answer: [VarTerm, Term][] = [];
-            for (let i = 0; i < program.queryVars.length; ++i) {
-                const v: VarTerm = { v: program.queryVars[i]!, n: i };
-                const t = Substitution.apply(frame.subst)(v);
-
-                if (Term.isVar(t) && t.n === v.n) {
-                    continue;
-                }
-
-                answer.push([v, t]);
-            }
-
-            return [{ path, answer }, frame.parent];
+            return [buildAnswer(frame, program), frame.parent];
         }
 
         const origHorn = program.context[frame.position];
