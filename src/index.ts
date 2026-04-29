@@ -5,7 +5,9 @@ import { keymap } from '@codemirror/view';
 import { Parser } from './util/parser/Parser';
 import { Parsers } from './util/parser/Parsers';
 import { ParseState } from './util/parser/ParseState';
-import { evaluate, Evaluator, FalseEvaluation, StepEvaluation } from './evaluator/Evaluator';
+import { evaluate as dfsEvaluate } from './evaluator/DFSEvaluator';
+import { evaluate as interleavingEvaluate } from './evaluator/InterleavingEvaluator';
+import { FalseEvaluation, StepEvaluation, Evaluator, CurrentQuery, hornTailToCurrentQuery, EvaluatorFrame, falseEvaluator } from './evaluator/Evaluator';
 import { microProlog } from './editor/language';
 import { Program } from './syntax/Program';
 import { Term } from './syntax/Term';
@@ -14,6 +16,7 @@ import { Term } from './syntax/Term';
 const printElement = document.getElementById('print') as HTMLTextAreaElement;
 const answersElement = document.getElementById('answers') as HTMLUListElement;
 const runButton = document.getElementById('run')! as HTMLButtonElement;
+const strategySelect = document.getElementById('strategy') as HTMLSelectElement;
 
 let currentEvaluator: Evaluator | undefined = undefined;
 
@@ -24,6 +27,7 @@ const setCurrentEvaluator = (evaluator?: Evaluator) => {
 
     currentEvaluator = evaluator;
     runButton.innerText = evaluator ? 'Next answer' : 'Run';
+    strategySelect.disabled = !!evaluator;
 }
 
 const onCodeChange = (code: string) => {
@@ -45,6 +49,7 @@ const onCodeChange = (code: string) => {
     }, 1);
 
     setCurrentEvaluator(undefined);
+    strategySelect.disabled = false;
 };
 
 const editorView = new EditorView({
@@ -147,7 +152,16 @@ runButton.addEventListener('click', async () => {
 
     try {
         const program = Program.prepare(await Parser.eval0(editorView.state.doc.toString(), Parsers.full(Program.parse)));
-        setCurrentEvaluator(evaluate(program));
+
+        const strategy = strategySelect.value as 'dfs' | 'interleaving';
+        let evaluator: Evaluator;
+        if (strategy === 'interleaving') {
+            evaluator = interleavingEvaluate(program);
+        } else {
+            evaluator = dfsEvaluate(program);
+        }
+
+        setCurrentEvaluator(evaluator);
     } catch (e) {
         console.error(e);
         alert(e);
