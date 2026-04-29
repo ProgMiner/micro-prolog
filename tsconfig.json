@@ -77,6 +77,5 @@
       "dom",
       "es6"
     ]
-  },
-  "exclude": ["./test"]   /* Paths to exclude from build */
+  }
 }

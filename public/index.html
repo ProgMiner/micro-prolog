@@ -74,6 +74,30 @@
             max-height: 30px;
             margin-top: 5px;
         }
+
+        .controls-row {
+            display: flex;
+            gap: 5px;
+        }
+
+        .controls-row select {
+            flex: none;
+            min-width: 100px;
+            min-height: 30px;
+            max-height: 30px;
+            margin-top: 0;
+        }
+
+        .controls-row button {
+            flex: 1;
+            min-height: 30px;
+            max-height: 30px;
+            margin-top: 0;
+        }
+
+        select {
+            padding: 2px 5px;
+        }
     </style>
 </head>
 
@@ -90,7 +114,13 @@
         <ul id="answers"></ul>
     </div>
 
-    <button id="run">Run</button>
+    <div class="controls-row">
+        <select id="strategy">
+            <option value="dfs" selected>DFS</option>
+            <option value="interleaving">Interleaving</option>
+        </select>
+        <button id="run">Run</button>
+    </div>
 </div>
 
 <script type="text/javascript" src="./script.js"></script>
