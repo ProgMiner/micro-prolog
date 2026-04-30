@@ -13,31 +13,37 @@ import { Program } from './syntax/Program';
 import { Term } from './syntax/Term';
 
 
-const answersDfsElement = document.getElementById('answers-dfs') as HTMLUListElement;
-const answersInterleavingElement = document.getElementById('answers-interleaving') as HTMLUListElement;
-const printElement = document.getElementById('print') as HTMLTextAreaElement;
-const runButton = document.getElementById('run')! as HTMLButtonElement;
-const strategySelect = document.getElementById('strategy') as HTMLSelectElement;
-
-const getCurrentStrategy = () => strategySelect.value as 'dfs' | 'interleaving';
-
 interface EvaluatorTab {
     evaluator?: Evaluator;
     running: boolean;
     answersList: HTMLUListElement;
 }
 
+const makeEvaluatorTab = (answersList: HTMLUListElement): EvaluatorTab => ({
+    evaluator: undefined,
+    running: false,
+    answersList,
+});
+
 const evaluatorTabs: { readonly [K in 'dfs' | 'interleaving']: EvaluatorTab } = {
-    dfs: { evaluator: undefined, running: false, answersList: answersDfsElement },
-    interleaving: { evaluator: undefined, running: false, answersList: answersInterleavingElement },
+    dfs: makeEvaluatorTab(document.getElementById('answers-dfs') as HTMLUListElement),
+    interleaving: makeEvaluatorTab(document.getElementById('answers-interleaving') as HTMLUListElement),
 };
+
+const printElement = document.getElementById('print') as HTMLTextAreaElement;
+const runButton = document.getElementById('run') as HTMLButtonElement;
+const strategySelect = document.getElementById('strategy') as HTMLSelectElement;
+const resizerElement = document.getElementById('resizer') as HTMLDivElement;
+
+const getCurrentStrategy = () => strategySelect.value as 'dfs' | 'interleaving';
 
 const switchStrategy = () => {
     const strategy = getCurrentStrategy();
     localStorage.setItem('strategy', strategy);
 
-    answersDfsElement.classList.toggle('hidden', strategy !== 'dfs');
-    answersInterleavingElement.classList.toggle('hidden', strategy !== 'interleaving');
+    for (const s of ['dfs', 'interleaving'] as const) {
+        evaluatorTabs[s].answersList.classList.toggle('hidden', strategy !== s);
+    }
 
     const tab = evaluatorTabs[strategy];
     runButton.innerText = tab.evaluator
@@ -105,7 +111,7 @@ const editorView = new EditorView({
     ],
 });
 
-document.getElementById('code')!.replaceWith(editorView.dom)
+document.getElementById('code')!.replaceWith(editorView.dom);
 editorView.dom.id = 'code';
 
 onCodeChange(editorView.state.doc.toString());
@@ -203,3 +209,55 @@ runButton.addEventListener('click', async () => {
         alert(e);
     }
 });
+
+{
+    let currentWidth: number = 0;
+
+    const setWidth = (newWidth: number) => {
+        newWidth = Math.max(25, Math.min(newWidth, 75));
+
+        if (newWidth === currentWidth) {
+            return;
+        }
+
+        currentWidth = newWidth;
+        editorView.dom.style.maxWidth = currentWidth + '%';
+    };
+
+    setWidth(50);
+
+    resizerElement.addEventListener('dblclick', () => setWidth(50));
+
+    let handleCleanup: (() => void) | undefined = undefined;
+
+    const cleanup = () => {
+        if (!handleCleanup) {
+            return;
+        }
+
+        handleCleanup();
+        handleCleanup = undefined;
+    };
+
+    resizerElement.addEventListener('mousedown', (e: MouseEvent) => {
+        e.preventDefault();
+
+        const handleMouseMove = (e: MouseEvent) => {
+            if (e.buttons & 1) {
+                setWidth((e.clientX / document.body.clientWidth) * 100);
+            } else {
+                cleanup();
+            }
+        };
+
+        document.body.classList.add('resizing');
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', cleanup);
+
+        handleCleanup = () => {
+            document.body.classList.remove('resizing');
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', cleanup);
+        };
+    });
+}
