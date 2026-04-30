@@ -24,6 +24,11 @@
             flex-direction: row;
         }
 
+        body.resizing {
+            user-select: none;
+            cursor: col-resize;
+        }
+
         textarea, #code {
             font: 14pt monospace;
             box-sizing: border-box;
@@ -37,14 +42,13 @@
 
         #code {
             max-width: 50%;
-            margin-right: 5px;
             border: 1px solid #767676;
             border-radius: 2px;
+            transition: max-width 0.1s ease;
         }
 
         .control-panel {
             display: flex;
-            max-width: 50%;
             align-items: stretch;
             justify-content: space-between;
             flex-direction: column;
@@ -102,12 +106,34 @@
         select {
             padding: 2px 5px;
         }
+
+        .resizer {
+            display: flex;
+            width: 5px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .resizer::before {
+            content: '';
+            width: 50%;
+            height: 50%;
+            border-radius: 2px;
+            cursor: col-resize;
+            transition: background 0.2s;
+        }
+
+        .resizer:hover::before, .resizing .resizer::before {
+            background: rgba(128, 128, 128, 0.5);
+        }
     </style>
 </head>
 
 <body>
 
 <textarea id="code"></textarea>
+
+<div id="resizer" class="resizer"></div>
 
 <div class="control-panel">
     <textarea id="print" disabled></textarea>
